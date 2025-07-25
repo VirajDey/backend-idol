@@ -1,0 +1,23 @@
+{
+  "name": "books-backend-worker",
+  "compatibility_date": "2025-04-01",
+  "main": "index.js",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./public"
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "8f11213948d54c648dfcba384ff18a81",
+      "localConnectionString": "postgresql://neondb_owner:npg_Xs1L7MtRuKDo@ep-spring-thunder-aea8t1yx-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+    }
+  ],
+  "placement": {
+    "mode": "smart"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "upload_source_maps": true
+} 
