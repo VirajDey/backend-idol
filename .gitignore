@@ -43,3 +43,6 @@ coverage/
 
 # Misc
 *.tgz 
+
+# Cloudflare Wrangler local state
+.wrangler/ 
