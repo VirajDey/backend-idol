@@ -1,0 +1,1016 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "User Authentication API",
+    "description": "API for user authentication, registration, and profile management",
+    "version": "1.0.0",
+    "contact": {
+      "name": "API Support",
+      "email": "support@example.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://books-backend-worker.viraj-frisson.workers.dev",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:8787",
+      "description": "Development server"
+    },
+    {
+      "url": "http://127.0.0.1:8787",
+      "description": "Wrangler Local server"
+    }
+  ],
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register a new user",
+        "description": "Create a new user account with username, email, and password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "email", "password"],
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 50,
+                    "description": "Unique username for the user"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "User's email address"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 6,
+                    "description": "User's password (will be hashed)"
+                  },
+                  "wallet": {
+                    "type": "string",
+                    "description": "User's wallet address (optional)"
+                  },
+                  "two_fa_enabled": {
+                    "type": "boolean",
+                    "description": "Enable 2FA for the user (default: false)"
+                  }
+                }
+              },
+              "example": {
+                "username": "john_doe",
+                "email": "john@example.com",
+                "password": "password123",
+                "wallet": "0x1234567890abcdef",
+                "two_fa_enabled": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    },
+                    "token": {
+                      "type": "string",
+                      "description": "Authentication token"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Registration successful. Please save your 2FA code: 123456"
+                    },
+                    "twoFACode": {
+                      "type": "string",
+                      "description": "2FA code (only included if two_fa_enabled is true)"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - missing required fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - user already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "User login",
+        "description": "Authenticate user with email and password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "User's email address"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "User's password"
+                  },
+                  "twoFACode": {
+                    "type": "string",
+                    "description": "2FA code (required if user has 2FA enabled)"
+                  }
+                }
+              },
+              "example": {
+                "email": "john@example.com",
+                "password": "password123",
+                "twoFACode": "123456"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    },
+                    "token": {
+                      "type": "string",
+                      "description": "Authentication token"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Login successful"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - missing required fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid credentials or 2FA required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string",
+                          "example": "2FA code required"
+                        },
+                        "requires2FA": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Please provide your 2FA code"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - account suspended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": ["Profile"],
+        "summary": "Get current user profile",
+        "description": "Retrieve the profile of the currently authenticated user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User profile retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/profile": {
+      "put": {
+        "tags": ["Profile"],
+        "summary": "Update user profile",
+        "description": "Update the current user's profile information",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 50,
+                    "description": "New username"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "New email address"
+                  },
+                  "wallet": {
+                    "type": "string",
+                    "description": "New wallet address"
+                  },
+                  "two_fa_enabled": {
+                    "type": "boolean",
+                    "description": "Enable or disable 2FA"
+                  }
+                }
+              },
+              "example": {
+                "username": "new_username",
+                "wallet": "0xabcdef123456",
+                "two_fa_enabled": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Profile updated successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - username or email already taken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "tags": ["Profile"],
+        "summary": "Change user password",
+        "description": "Change the current user's password",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["currentPassword", "newPassword"],
+                "properties": {
+                  "currentPassword": {
+                    "type": "string",
+                    "description": "Current password"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 6,
+                    "description": "New password"
+                  }
+                }
+              },
+              "example": {
+                "currentPassword": "oldpassword123",
+                "newPassword": "newpassword456"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Password changed successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - missing required fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - current password incorrect",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "User logout",
+        "description": "Logout the current user (token invalidation)",
+        "responses": {
+          "200": {
+            "description": "Logout successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Logout successful"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/admin/register": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Register a new admin",
+        "description": "Create a new admin account with email and password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Admin's email address"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 6,
+                    "description": "Admin's password (will be hashed)"
+                  },
+                  "two_fa_enabled": {
+                    "type": "boolean",
+                    "description": "Enable 2FA for the admin (default: false)"
+                  }
+                }
+              },
+              "example": {
+                "email": "admin@example.com",
+                "password": "admin123",
+                "two_fa_enabled": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Admin registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "admin": {
+                      "type": "object",
+                      "properties": {
+                        "id": {"type": "integer"},
+                        "email": {"type": "string", "format": "email"},
+                        "created_at": {"type": "string", "format": "date-time"}
+                      }
+                    },
+                    "token": {
+                      "type": "string",
+                      "description": "Authentication token"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Admin registration successful. Please save your 2FA code: 123456"
+                    },
+                    "twoFACode": {
+                      "type": "string",
+                      "description": "2FA code (only included if two_fa_enabled is true)"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - missing required fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - admin already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/admin/login": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Admin login",
+        "description": "Authenticate admin with email and password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Admin's email address"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "Admin's password"
+                  },
+                  "twoFACode": {
+                    "type": "string",
+                    "description": "2FA code (required if admin has 2FA enabled)"
+                  }
+                }
+              },
+              "example": {
+                "email": "admin@example.com",
+                "password": "admin123",
+                "twoFACode": "123456"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Admin login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "admin": {
+                      "type": "object",
+                      "properties": {
+                        "id": {"type": "integer"},
+                        "email": {"type": "string", "format": "email"},
+                        "created_at": {"type": "string", "format": "date-time"},
+                        "updated_at": {"type": "string", "format": "date-time"}
+                      }
+                    },
+                    "token": {
+                      "type": "string",
+                      "description": "Authentication token"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Admin login successful"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - missing required fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid credentials or 2FA required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string",
+                          "example": "2FA code required"
+                        },
+                        "requires2FA": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Please provide your 2FA code"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get all users",
+        "description": "Retrieve all users (admin only)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Users retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "users": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/User"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - admin access required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{userId}": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get specific user",
+        "description": "Retrieve a specific user by ID (admin only)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "User ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - admin access required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Admin"],
+        "summary": "Delete user",
+        "description": "Delete a user permanently (admin only)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "User ID to delete"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "User deleted successfully"
+                    },
+                    "deletedUser": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "description": "Deleted user ID"
+                        },
+                        "username": {
+                          "type": "string",
+                          "description": "Deleted user username"
+                        },
+                        "email": {
+                          "type": "string",
+                          "description": "Deleted user email"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - cannot delete own account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - admin access required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token obtained from login or registration"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "User ID"
+          },
+          "username": {
+            "type": "string",
+            "description": "User's username"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User's email address"
+          },
+          "wallet": {
+            "type": "string",
+            "nullable": true,
+            "description": "User's wallet address"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "suspended"],
+            "description": "User's account status"
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "Whether the user's email is verified"
+          },
+          "credits": {
+            "type": "integer",
+            "description": "User's credit balance"
+          },
+          "joined_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the user joined"
+          },
+          "two_fa_enabled": {
+            "type": "boolean",
+            "description": "Whether 2FA is enabled"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the user was created"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the user was last updated"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "details": {
+            "type": "string",
+            "description": "Additional error details (optional)"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "User authentication endpoints"
+    },
+    {
+      "name": "Profile",
+      "description": "User profile management endpoints"
+    },
+    {
+      "name": "Admin",
+      "description": "Admin-only endpoints"
+    }
+  ]
+} 
