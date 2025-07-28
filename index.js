@@ -1,5 +1,6 @@
-import { mockBooks } from "./lib/mockData.js";
+import userHandler from "./user.js";
 import postgres from "postgres";
+import { mockBooks } from "./lib/mockData.js";
 
 function withCORS(response) {
   const headers = new Headers(response.headers);
@@ -21,76 +22,36 @@ export default {
     const url = new URL(request.url);
     const { pathname } = url;
 
-    // Handle CORS preflight
-    if (request.method === "OPTIONS") {
-      return withCORS(new Response(null, { status: 204 }));
+    // Route all /api/auth and /api/admin requests to user.js
+    if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/admin")) {
+      return userHandler.fetch(request, env, ctx);
     }
 
-    // Root path: return API status
-    if (pathname === "/" && request.method === "GET") {
-      return withCORS(new Response("API is running", { status: 200, headers: { "Content-Type": "text/plain" } }));
-    }
-
-    // Swagger documentation endpoint
+    // Swagger UI endpoint
     if (pathname === "/api/docs" && request.method === "GET") {
-      const swaggerHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Authentication API Documentation</title>
-    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css" />
-    <style>
-        html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
-        *, *:before, *:after { box-sizing: inherit; }
-        body { margin:0; background: #fafafa; }
-    </style>
-</head>
-<body>
-    <div id="swagger-ui"></div>
-    <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
-    <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js"></script>
-    <script>
-        window.onload = function() {
-            const ui = SwaggerUIBundle({
-                url: '/api/swagger.json',
-                dom_id: '#swagger-ui',
-                deepLinking: true,
-                presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
-                plugins: [SwaggerUIBundle.plugins.DownloadUrl],
-                layout: "StandaloneLayout"
-            });
-        };
-    </script>
-</body>
-</html>`;
-      
-      return new Response(swaggerHtml, { 
-        status: 200, 
-        headers: { "Content-Type": "text/html" } 
+      return new Response(await (await fetch(new URL("./swagger-ui.html", import.meta.url))).text(), {
+        headers: { "Content-Type": "text/html" }
       });
     }
 
     // Swagger JSON endpoint
     if (pathname === "/api/swagger.json" && request.method === "GET") {
       try {
-        // Import the swagger.json file
         const swaggerModule = await import('./swagger.json', { assert: { type: 'json' } });
         const swaggerJson = swaggerModule.default;
-        
-        return new Response(JSON.stringify(swaggerJson), { 
-          status: 200, 
-          headers: { "Content-Type": "application/json" } 
+        return new Response(JSON.stringify(swaggerJson), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
         });
       } catch (error) {
-        return new Response(JSON.stringify({ error: "Failed to load Swagger documentation" }), { 
-          status: 500, 
-          headers: { "Content-Type": "application/json" } 
+        return new Response(JSON.stringify({ error: "Failed to load Swagger documentation" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" }
         });
       }
     }
 
-    // /api/books (GET)
+    // Book endpoints (example)
     if (pathname === "/api/books" && request.method === "GET") {
       const sql = await getSQL(env);
       if (sql) {
@@ -170,6 +131,7 @@ export default {
       }
     }
 
+    // Fallback for unknown routes
     return withCORS(new Response("Not found", { status: 404 }));
-  },
+  }
 }; 
