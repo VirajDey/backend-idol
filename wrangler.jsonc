@@ -1,11 +1,8 @@
 {
-  "name": "books-backend-worker",
+  "name": "user-auth-backend-worker",
   "compatibility_date": "2025-04-01",
   "main": "index.js",
   "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": "./public"
-  },
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",

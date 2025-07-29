@@ -1,12 +1,11 @@
-# Backend IDOL - Cloudflare Worker API
+# Backend IDOL - User Authentication API
 
-A comprehensive backend API built with Cloudflare Workers, featuring user authentication, admin management, and book catalog functionality. The system uses PostgreSQL via Cloudflare Hyperdrive for data persistence.
+A comprehensive user authentication backend API built with Cloudflare Workers, featuring user registration, login, profile management, and admin capabilities. The system uses PostgreSQL via Cloudflare Hyperdrive for data persistence.
 
 ## 🚀 Features
 
 - **User Authentication System** - Registration, login, profile management with 2FA support
 - **Admin Management** - Separate admin authentication and user management capabilities
-- **Book Catalog API** - Complete book listing and related books functionality
 - **Database Integration** - PostgreSQL via Cloudflare Hyperdrive
 - **CORS Support** - Configured for all frontend requests
 - **API Documentation** - Complete Swagger/OpenAPI documentation
@@ -45,23 +44,23 @@ psql "your-neon-connection-string" -f schema.sql
 
 1. **Create a Hyperdrive database binding**:
    ```bash
-   wrangler hyperdrive create idol-db
+   wrangler hyperdrive create user-auth-db
    ```
 
 2. **Add your Neon connection string**:
    ```bash
-   wrangler hyperdrive update idol-db --connection-string "your-neon-connection-string"
+   wrangler hyperdrive update user-auth-db --connection-string "your-neon-connection-string"
    ```
 
 3. **Update wrangler.jsonc** to include the Hyperdrive binding:
    ```json
    {
-     "name": "backend-idol",
+     "name": "user-auth-backend-worker",
      "main": "index.js",
      "compatibility_date": "2024-01-01",
      "hyperdrive": [
        {
-         "binding": "DB",
+         "binding": "HYPERDRIVE",
          "id": "your-hyperdrive-id"
        }
      ]
@@ -105,11 +104,6 @@ Your API will be available at `http://localhost:8787`
 - **`GET /api/admin/users/:id`** - Get specific user (admin only)
 - **`PUT /api/admin/users/:id/status`** - Update user status (admin only)
 - **`DELETE /api/admin/users/:id`** - Delete user (admin only)
-
-### Book Catalog APIs
-- **`GET /api/books`** - List all books
-- **`GET /api/books/:id`** - Get a single book by ID
-- **`GET /api/books/:id/related`** - Get related books by genre
 
 ### Documentation APIs
 - **`GET /api/docs`** - Swagger UI documentation
@@ -226,9 +220,9 @@ backend-idol/
 ├── user.js               # User authentication and admin APIs
 ├── schema.sql            # Database schema
 ├── swagger.json          # API documentation
-├── swagger-ui.html       # Swagger UI interface
 ├── wrangler.jsonc        # Wrangler configuration
-└── public/               # Static assets (book images)
+├── package.json          # Project dependencies
+└── README.md             # This file
 ```
 
 ### Available Scripts

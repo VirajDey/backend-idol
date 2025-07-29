@@ -1,7 +1,7 @@
 {
-  "name": "books-backend-worker",
+  "name": "user-auth-backend-worker",
   "version": "1.0.0",
-  "description": "Cloudflare Worker backend for books API (mock data + Hyperdrive)",
+  "description": "Cloudflare Worker backend for user authentication and admin management",
   "main": "index.js",
   "type": "module",
   "scripts": {

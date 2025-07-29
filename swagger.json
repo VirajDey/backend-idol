@@ -11,7 +11,7 @@
   },
   "servers": [
     {
-      "url": "https://books-backend-worker.viraj-frisson.workers.dev",
+      "url": "https://user-auth-backend-worker.viraj-frisson.workers.dev",
       "description": "Production server"
     },
     {
